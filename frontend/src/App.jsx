@@ -1,0 +1,120 @@
+import { useEffect, useRef, useState } from "react";
+import { api } from "./api.js";
+import { SAMPLE_TXNS } from "./sampleTxns.js";
+import DecisionPie from "./components/DecisionPie.jsx";
+import ScoreHistogram from "./components/ScoreHistogram.jsx";
+
+function Kpi({ k, v, cls }) {
+  return <div className="kpi"><div className="k">{k}</div><div className={`v ${cls || ""}`}>{v}</div></div>;
+}
+
+export default function App() {
+  const [health, setHealth] = useState(null);
+  const [meta, setMeta] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [alerts, setAlerts] = useState([]);
+  const [streaming, setStreaming] = useState(false);
+  const [error, setError] = useState(null);
+  const streamRef = useRef(null);
+
+  const refresh = async () => {
+    try {
+      const [s, a] = await Promise.all([api.stats(), api.alerts(15)]);
+      setStats(s); setAlerts(a.alerts); setError(null);
+    } catch (e) { setError(e.message); }
+  };
+
+  useEffect(() => {
+    api.health().then(setHealth).catch(() => setHealth({ status: "error" }));
+    api.modelInfo().then(setMeta).catch(() => {});
+    refresh();
+    const id = setInterval(refresh, 3000);   // live polling
+    return () => clearInterval(id);
+  }, []);
+
+  // Live stream: post a real sample transaction every ~1.4s while enabled.
+  useEffect(() => {
+    if (!streaming) return;
+    let i = 0;
+    streamRef.current = setInterval(async () => {
+      const t = SAMPLE_TXNS[i % SAMPLE_TXNS.length];
+      i += 1;
+      try {
+        await api.score({ txn_id: `live-${Date.now()}`, Amount: t.Amount, Time: t.Time, features: t.features });
+        refresh();
+      } catch (e) { setError(e.message); }
+    }, 1400);
+    return () => clearInterval(streamRef.current);
+  }, [streaming]);
+
+  const dc = stats?.decision_counts || {};
+  const conf = stats?.confusion;
+  const precision = conf ? conf.tp / Math.max(conf.tp + conf.fp, 1) : null;
+  const recall = conf ? conf.tp / Math.max(conf.tp + conf.fn, 1) : null;
+
+  return (
+    <div className="app">
+      <div className="header">
+        <div>
+          <div className="brand">Fraud<span>Pulse</span></div>
+          <p className="sub">Real-time transaction fraud detection · XGBoost + IsolationForest</p>
+        </div>
+        <div className="status">
+          <div className="live"><span className="dot" /> live</div>
+          <div>{health?.status === "ok" ? "🟢" : "🔴"} API · {health?.models_loaded ? "🟢" : "🔴"} models</div>
+          {meta && <div>PR-AUC {meta.pr_auc} · ROC-AUC {meta.roc_auc}</div>}
+        </div>
+      </div>
+
+      {error && <div className="error">API error: {error}. Is the backend running on :8000?</div>}
+
+      <div className="grid4">
+        <Kpi k="Transactions Scored" v={(stats?.total ?? 0).toLocaleString()} />
+        <Kpi k="Active Alerts" v={(stats?.alerts ?? 0).toLocaleString()} cls="amber" />
+        <Kpi k="Flagged (blocked)" v={(dc.FLAG ?? 0).toLocaleString()} cls="red" />
+        <Kpi k="Amount at Risk" v={`$${(stats?.amount_at_risk ?? 0).toLocaleString()}`} cls="red" />
+      </div>
+
+      <div className="btnrow">
+        <button className={`btn ${streaming ? "btn2" : ""}`} onClick={() => setStreaming((s) => !s)}>
+          {streaming ? "⏸ Stop live stream" : "▶ Start live transaction stream"}
+        </button>
+        <span className="muted" style={{ alignSelf: "center" }}>
+          Replays real transactions through the scoring API; alerts update live.
+        </span>
+      </div>
+
+      <div className="grid2">
+        <div className="card"><h3>Decision Mix</h3><DecisionPie counts={dc} /></div>
+        <div className="card"><h3>Fraud-Probability Distribution</h3><ScoreHistogram histogram={stats?.score_histogram} /></div>
+      </div>
+
+      {conf && (
+        <div className="grid3" style={{ marginTop: 16 }}>
+          <Kpi k="Detection Precision" v={`${(precision * 100).toFixed(1)}%`} cls="green" />
+          <Kpi k="Detection Recall" v={`${(recall * 100).toFixed(1)}%`} cls="green" />
+          <Kpi k="Confusion (TP·FP·FN·TN)" v={`${conf.tp}·${conf.fp}·${conf.fn}·${conf.tn}`} />
+        </div>
+      )}
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Live Alert Feed</h3>
+        <table className="data">
+          <thead><tr><th>Txn</th><th>Amount</th><th>Fraud Prob</th><th>Anomaly</th><th>Decision</th></tr></thead>
+          <tbody>
+            {alerts.map((a) => (
+              <tr key={a.txn_id}>
+                <td className="scoreline">{a.txn_id}</td>
+                <td>${a.amount?.toLocaleString()}</td>
+                <td>{(a.fraud_probability * 100).toFixed(1)}%</td>
+                <td>{a.anomaly_score?.toFixed(2)}{a.is_anomaly ? " ⚠" : ""}</td>
+                <td><span className={`pill ${a.decision}`}>{a.decision}</span></td>
+              </tr>
+            ))}
+            {!alerts.length && <tr><td colSpan="5" className="muted">No alerts yet — start the live stream.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
