@@ -1,0 +1,21 @@
+# Render Blueprint — one-click deploy of the FraudPulse API.
+# New + -> Blueprint -> connect EthanJGithub/FraudPulse. Render reads this file,
+# provisions the service, and prompts for GROQ_API_KEY (sync:false = you set it).
+services:
+  - type: web
+    name: fraudpulse-api
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: GROQ_API_KEY        # required for the onboarding agent (no silent fallback)
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.1-8b-instant
+      - key: FRAUDPULSE_AUTOSEED
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.13.1"
