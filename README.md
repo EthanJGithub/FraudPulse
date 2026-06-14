@@ -9,6 +9,12 @@
 [![Tests](https://img.shields.io/badge/tests-13_passing-brightgreen)](tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
+**🔴 Live demo:** [**Dashboard**](https://fraud-pulse.vercel.app/) · [**API health**](https://fraudpulse-api.onrender.com/api/v1/health) · [**API docs**](https://fraudpulse-api.onrender.com/docs)
+
+> The dashboard (Vercel) talks to the FastAPI service (Render) with the LLM
+> onboarding agent online. The API is on a free tier — the **first request may
+> take ~50s** to wake the service, then it's instant.
+
 A streaming fraud-detection service that scores card transactions in real time,
 combining a supervised **XGBoost** classifier with an unsupervised
 **IsolationForest** anomaly detector, behind a **FastAPI** API and a live
