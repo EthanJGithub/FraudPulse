@@ -54,6 +54,20 @@ async def monitoring_alerts(limit: int = 25):
     return {"alerts": store.recent_alerts(limit=limit)}
 
 
+@router.get("/monitoring/system")
+async def monitoring_system():
+    """Operational health: request latency (p50/p95/p99), error rate, throughput,
+    and PSI model-drift over recently scored transactions. This is the
+    'monitoring system' view — production health, not just a model chart."""
+    from src import drift, metrics
+
+    return {
+        "metrics": metrics.snapshot(),
+        "drift": drift.drift_report(),
+        "models_loaded": scorer.is_ready(),
+    }
+
+
 @router.get("/monitoring/transactions")
 async def monitoring_transactions(limit: int = 25, decision: str = None):
     """Recent scored transactions for the live feed, optionally filtered by

@@ -65,3 +65,16 @@ table.data th { color: var(--muted); font-weight: 600; }
 .reasoning { margin-top: 14px; background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 8px; padding: 12px 14px; }
 .reasoning .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
 .reasoning p { margin: 0; font-size: 0.9rem; line-height: 1.55; }
+
+/* System health / observability */
+.hgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; }
+@media (max-width: 920px){ .hgrid { grid-template-columns: repeat(2,1fr); } }
+.hstat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.hstat .k { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.hstat .hv { font-size: 1.25rem; font-weight: 800; margin-top: 4px; }
+.hstat .hv.red { color: var(--red); } .hstat .hv.green { color: var(--accent); } .hstat .hv.amber { color: var(--amber); }
+.hstat .hsub { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+.drift-block { margin-top: 16px; }
+.drift-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.drift-head .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+.drift-badge { font-size: 0.74rem; font-weight: 700; padding: 3px 10px; border: 1px solid; border-radius: 999px; text-transform: capitalize; }

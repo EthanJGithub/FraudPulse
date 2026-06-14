@@ -136,6 +136,20 @@ def train(config: DatasetConfig = None, df: pd.DataFrame = None, model_dir: str 
     }
     with open(os.path.join(model_dir, "metadata.json"), "w") as f:
         json.dump(metadata, f, indent=2)
+
+    # Capture the drift reference window (score + amount distributions on the
+    # held-out test population) so PSI monitoring has a training-time baseline.
+    try:
+        from src import drift as _drift
+        ref_vals = {"fraud_probability": [float(p) for p in proba]}
+        if config.amount_col and config.amount_col in df.columns:
+            ref_vals["amount"] = df.loc[X_te.index, config.amount_col].tolist()
+        _drift.REFERENCE_PATH = os.path.join(model_dir, "drift_reference.json")
+        _drift.build_reference(ref_vals)
+        logger.info("Saved drift reference (%s).", ", ".join(ref_vals))
+    except Exception as exc:  # pragma: no cover - reference is non-critical to training
+        logger.warning("Drift reference build skipped: %s", exc)
+
     logger.info("Saved models + metadata. PR-AUC=%.4f. Training complete.", pr_auc)
     return metadata
 

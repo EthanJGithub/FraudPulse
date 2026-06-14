@@ -14,6 +14,7 @@ export const api = {
   modelInfo: () => req("/model/info"),
   score: (txn) => req("/score", { method: "POST", body: JSON.stringify(txn) }),
   stats: () => req("/monitoring/stats"),
+  system: () => req("/monitoring/system"),
   alerts: (limit = 25) => req(`/monitoring/alerts?limit=${limit}`),
   transactions: (limit = 25, decision) =>
     req(`/monitoring/transactions?limit=${limit}${decision ? `&decision=${decision}` : ""}`),

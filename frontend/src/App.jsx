@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import DecisionPie from "./components/DecisionPie.jsx";
 import ScoreHistogram from "./components/ScoreHistogram.jsx";
 import OnboardPanel from "./components/OnboardPanel.jsx";
+import SystemHealth from "./components/SystemHealth.jsx";
 
 function Kpi({ k, v, cls }) {
   return <div className="kpi"><div className="k">{k}</div><div className={`v ${cls || ""}`}>{v}</div></div>;
@@ -14,6 +15,7 @@ export default function App() {
   const [health, setHealth] = useState(null);
   const [meta, setMeta] = useState(null);
   const [stats, setStats] = useState(null);
+  const [system, setSystem] = useState(null);
   const [feed, setFeed] = useState([]);
   const [filter, setFilter] = useState("ALL");
   const [streaming, setStreaming] = useState(false);
@@ -26,11 +28,12 @@ export default function App() {
   const refresh = async () => {
     try {
       const f = filterRef.current;
-      const [s, t] = await Promise.all([
+      const [s, t, sys] = await Promise.all([
         api.stats(),
         api.transactions(15, f === "ALL" ? undefined : f),
+        api.system().catch(() => null),
       ]);
-      setStats(s); setFeed(t.transactions); setError(null);
+      setStats(s); setFeed(t.transactions); if (sys) setSystem(sys); setError(null);
     } catch (e) { setError(e.message); }
   };
 
@@ -153,6 +156,8 @@ export default function App() {
           </tbody>
         </table>
       </div>
+
+      <SystemHealth system={system} />
 
       <OnboardPanel online={health?.onboarding_agent_online} />
     </div>

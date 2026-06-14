@@ -61,6 +61,16 @@ def test_stats_per_decision_histograms(client, fraud_txn, legit_txn):
         assert len(h) == 20
 
 
+def test_monitoring_system(client, fraud_txn):
+    client.post("/api/v1/score", json=fraud_txn)
+    s = client.get("/api/v1/monitoring/system").json()
+    assert "metrics" in s and "drift" in s
+    m = s["metrics"]
+    assert m["requests_total"] >= 1
+    assert set(m["latency_ms"]) == {"p50", "p95", "p99", "max"}
+    assert "overall_status" in s["drift"]
+
+
 def test_onboard_upload_rejects_empty(client):
     r = client.post("/api/v1/onboard/upload", json={"csv_text": "   "})
     assert r.status_code == 400
