@@ -43,3 +43,25 @@ table.data th { color: var(--muted); font-weight: 600; }
 .scoreline { font-family: ui-monospace, monospace; font-size: 0.82rem; color: var(--muted); }
 .error { background: rgba(255,77,94,.14); border: 1px solid var(--red); color: #ffb0b8; padding: 10px 14px; border-radius: 8px; margin: 10px 0; }
 .muted { color: var(--muted); font-size: 0.82rem; }
+
+/* Filterable decision feed */
+.feed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.feed-head h3 { margin: 0; }
+.filters { display: flex; gap: 6px; }
+.fbtn { background: var(--panel-2); color: var(--muted); border: 1px solid var(--border); padding: 5px 12px; border-radius: 999px; font-size: 0.76rem; font-weight: 700; cursor: pointer; }
+.fbtn:hover { color: var(--text); }
+.fbtn.active { color: #062019; background: var(--text); border-color: var(--text); }
+.fbtn.ALLOW.active { background: var(--accent); border-color: var(--accent); }
+.fbtn.REVIEW.active { background: var(--amber); border-color: var(--amber); color: #1a1200; }
+.fbtn.FLAG.active { background: var(--red); border-color: var(--red); color: #2a0006; }
+
+/* Onboarding agent panel */
+.btn3 { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+.csvbox { width: 100%; min-height: 130px; margin-top: 10px; resize: vertical; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: ui-monospace, monospace; font-size: 0.8rem; line-height: 1.5; }
+.csvbox:focus { outline: none; border-color: var(--accent2); }
+.onboard-result { margin-top: 16px; }
+.onboard-result code { background: var(--panel-2); padding: 1px 6px; border-radius: 5px; font-size: 0.82rem; color: var(--accent); }
+.reasoning { margin-top: 14px; background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent2); border-radius: 8px; padding: 12px 14px; }
+.reasoning .k { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+.reasoning p { margin: 0; font-size: 0.9rem; line-height: 1.55; }

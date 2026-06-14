@@ -85,6 +85,23 @@ def recent_alerts(limit: int = 25) -> List[Dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
+def recent_transactions(limit: int = 25, decision: str | None = None) -> List[Dict[str, Any]]:
+    """Most recent scored transactions, optionally filtered to one decision
+    (ALLOW / REVIEW / FLAG). Powers the filterable live transaction feed."""
+    init_db()
+    with _connect() as conn:
+        if decision in ("ALLOW", "REVIEW", "FLAG"):
+            rows = conn.execute(
+                "SELECT * FROM transactions WHERE decision=? ORDER BY ts DESC LIMIT ?",
+                (decision, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM transactions ORDER BY ts DESC LIMIT ?", (limit,),
+            ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def stats() -> Dict[str, Any]:
     init_db()
     with _connect() as conn:
@@ -104,12 +121,21 @@ def stats() -> Dict[str, Any]:
         out["alerts"] = out["decision_counts"]["FLAG"] + out["decision_counts"]["REVIEW"]
         out["amount_at_risk"] = round(conn.execute(
             "SELECT COALESCE(SUM(amount),0) FROM transactions WHERE decision='FLAG'").fetchone()[0], 2)
-        # Probability histogram (20 bins) for the live score-distribution chart.
-        hist = [0] * 20
-        for (p,) in conn.execute("SELECT fraud_probability FROM transactions"):
+        # Probability histograms (20 bins) for the score-distribution chart,
+        # both overall and per-decision so the chart can follow the feed filter.
+        hist_all = [0] * 20
+        hist_by = {"ALLOW": [0] * 20, "REVIEW": [0] * 20, "FLAG": [0] * 20}
+        for p, d in conn.execute("SELECT fraud_probability, decision FROM transactions"):
             b = min(int((p or 0) * 20), 19)
-            hist[b] += 1
-        out["score_histogram"] = [{"bin": f"{i*5}-{i*5+5}%", "count": hist[i]} for i in range(20)]
+            hist_all[b] += 1
+            if d in hist_by:
+                hist_by[d][b] += 1
+
+        def _bins(h):
+            return [{"bin": f"{i*5}-{i*5+5}%", "count": h[i]} for i in range(20)]
+
+        out["score_histogram"] = _bins(hist_all)
+        out["histograms"] = {"ALL": _bins(hist_all), **{k: _bins(v) for k, v in hist_by.items()}}
         # If ground-truth labels exist (replaying real data), report detection quality.
         labeled = conn.execute("SELECT COUNT(*) FROM transactions WHERE label IS NOT NULL").fetchone()[0]
         if labeled:

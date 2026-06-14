@@ -6,7 +6,7 @@ const theme = {
   tooltip: { container: { background: "#1a2335", color: "#e8edf6" } },
 };
 
-export default function DecisionPie({ counts }) {
+export default function DecisionPie({ counts, onSliceClick }) {
   const data = Object.keys(COLORS)
     .map((k) => ({ id: k, label: k, value: counts?.[k] || 0, color: COLORS[k] }))
     .filter((d) => d.value > 0);
@@ -21,6 +21,7 @@ export default function DecisionPie({ counts }) {
         borderWidth={1} borderColor={{ from: "color", modifiers: [["darker", 0.5]] }}
         arcLabelsTextColor="#0b0f17"
         arcLinkLabelsColor={{ from: "color" }} arcLinkLabelsTextColor="#8b98b3"
+        onClick={onSliceClick ? (d) => onSliceClick(d.id) : undefined}
         theme={theme}
       />
     </div>

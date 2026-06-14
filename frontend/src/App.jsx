@@ -2,25 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import DecisionPie from "./components/DecisionPie.jsx";
 import ScoreHistogram from "./components/ScoreHistogram.jsx";
+import OnboardPanel from "./components/OnboardPanel.jsx";
 
 function Kpi({ k, v, cls }) {
   return <div className="kpi"><div className="k">{k}</div><div className={`v ${cls || ""}`}>{v}</div></div>;
 }
 
+const FILTERS = ["ALL", "ALLOW", "REVIEW", "FLAG"];
+
 export default function App() {
   const [health, setHealth] = useState(null);
   const [meta, setMeta] = useState(null);
   const [stats, setStats] = useState(null);
-  const [alerts, setAlerts] = useState([]);
+  const [feed, setFeed] = useState([]);
+  const [filter, setFilter] = useState("ALL");
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
   const streamRef = useRef(null);
   const bufRef = useRef([]);
+  const filterRef = useRef(filter);
+  filterRef.current = filter;
 
   const refresh = async () => {
     try {
-      const [s, a] = await Promise.all([api.stats(), api.alerts(15)]);
-      setStats(s); setAlerts(a.alerts); setError(null);
+      const f = filterRef.current;
+      const [s, t] = await Promise.all([
+        api.stats(),
+        api.transactions(15, f === "ALL" ? undefined : f),
+      ]);
+      setStats(s); setFeed(t.transactions); setError(null);
     } catch (e) { setError(e.message); }
   };
 
@@ -31,6 +41,9 @@ export default function App() {
     const id = setInterval(refresh, 3000);   // live polling
     return () => clearInterval(id);
   }, []);
+
+  // Re-pull the feed immediately when the decision filter changes.
+  useEffect(() => { refresh(); /* eslint-disable-next-line */ }, [filter]);
 
   // Live stream: replay a random REAL transaction (from the committed sample,
   // via /sample) every ~1.4s while enabled — varied real amounts and a
@@ -92,8 +105,14 @@ export default function App() {
       </div>
 
       <div className="grid2">
-        <div className="card"><h3>Decision Mix</h3><DecisionPie counts={dc} /></div>
-        <div className="card"><h3>Fraud-Probability Distribution</h3><ScoreHistogram histogram={stats?.score_histogram} /></div>
+        <div className="card">
+          <h3>Decision Mix</h3>
+          <DecisionPie counts={dc} onSliceClick={(id) => setFilter(id)} />
+        </div>
+        <div className="card">
+          <h3>Fraud-Probability Distribution {filter !== "ALL" && <span className="muted" style={{ fontWeight: 400 }}>· {filter}</span>}</h3>
+          <ScoreHistogram histogram={stats?.histograms?.[filter] ?? stats?.score_histogram} />
+        </div>
       </div>
 
       {conf && (
@@ -105,11 +124,21 @@ export default function App() {
       )}
 
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Live Alert Feed</h3>
+        <div className="feed-head">
+          <h3>Live Decision Feed</h3>
+          <div className="filters">
+            {FILTERS.map((f) => (
+              <button key={f} className={`fbtn ${f} ${filter === f ? "active" : ""}`}
+                onClick={() => setFilter(f)}>
+                {f === "ALL" ? "All" : f}
+              </button>
+            ))}
+          </div>
+        </div>
         <table className="data">
           <thead><tr><th>Txn</th><th>Amount</th><th>Fraud Prob</th><th>Anomaly</th><th>Decision</th></tr></thead>
           <tbody>
-            {alerts.map((a) => (
+            {feed.map((a) => (
               <tr key={a.txn_id}>
                 <td className="scoreline">{a.txn_id}</td>
                 <td>${a.amount?.toLocaleString()}</td>
@@ -118,10 +147,14 @@ export default function App() {
                 <td><span className={`pill ${a.decision}`}>{a.decision}</span></td>
               </tr>
             ))}
-            {!alerts.length && <tr><td colSpan="5" className="muted">No alerts yet — start the live stream.</td></tr>}
+            {!feed.length && <tr><td colSpan="5" className="muted">
+              {filter === "ALL" ? "No transactions yet — start the live stream." : `No ${filter} transactions yet.`}
+            </td></tr>}
           </tbody>
         </table>
       </div>
+
+      <OnboardPanel online={health?.onboarding_agent_online} />
     </div>
   );
 }

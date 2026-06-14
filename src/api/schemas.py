@@ -49,3 +49,16 @@ class OnboardRequest(BaseModel):
     model_config = {"json_schema_extra": {"example": {
         "csv_path": "data/sample_transactions.csv", "do_train": False, "allow_heuristic": False,
     }}}
+
+
+class OnboardUploadRequest(BaseModel):
+    """Browser-side onboarding: the visitor pastes/uploads CSV *text* (not a
+    server path). The endpoint is ANALYZE-ONLY — it profiles + reasons + returns
+    the proposed schema, but never retrains (one shared demo model)."""
+    csv_text: str = Field(..., description="Raw CSV content (header + rows) as text")
+    allow_heuristic: bool = Field(False, description="Use the deterministic engine if no LLM is set")
+
+    model_config = {"json_schema_extra": {"example": {
+        "csv_text": "amount,time,v1,v2,is_fraud\n149.62,0,-1.36,-0.07,0\n",
+        "allow_heuristic": False,
+    }}}
