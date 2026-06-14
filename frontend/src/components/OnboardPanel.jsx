@@ -1,64 +1,73 @@
 import { useState } from "react";
 import { api } from "../api.js";
 
-// Three labelled example datasets with deliberately different characteristics.
-// The agent's insight for each is generated live by the LLM (not hard-coded) —
-// these only supply the raw CSV the agent reasons about.
+// Four labelled example datasets with deliberately different characteristics,
+// served as static files (each ≥200 rows so none trip the small-sample advisory)
+// and fetched on demand — see loadAndRun. The agent's insight for each is
+// generated live by the LLM (not hard-coded); these only supply the raw CSV.
 const EXAMPLES = {
   valid: {
-    label: "✅ Clean — well-formed, suitable",
-    csv: `amount,elapsed_sec,pc1,pc2,pc3,is_fraud
-12.40,0,-0.21,0.44,0.10,0
-88.10,210,0.15,-0.32,0.22,0
-4200.00,455,-3.10,2.40,-4.90,1
-33.75,690,0.05,0.18,-0.11,0
-9.99,940,0.22,-0.07,0.31,0
-156.30,1180,-0.44,0.51,0.02,0
-2750.50,1395,-2.85,1.92,-4.10,1
-61.20,1620,0.10,-0.21,0.17,0
-24.00,1870,0.31,0.09,-0.05,0
-410.90,2090,-0.62,0.73,-0.40,0
-18.45,2330,0.27,-0.14,0.20,0
-3890.00,2560,-3.30,2.55,-5.10,1
-72.60,2800,0.08,0.12,-0.09,0
-145.00,3040,-0.38,0.40,0.05,0
-6.50,3290,0.35,-0.02,0.28,0
-220.75,3510,-0.51,0.60,-0.22,0
-49.90,3760,0.12,-0.18,0.19,0
-99.99,3990,0.02,0.21,-0.07,0`,
+    label: "Clean — well-formed, suitable",
+    url: "/examples/clean.csv",
   },
   flagged: {
-    label: "🚩 Flagged — tiny + id/leakage risk",
-    csv: `user_account_id,amt,t,feat_x,is_fraud
-U-90431,120.50,0,0.31,0
-U-90432,18.20,300,0.12,0
-U-90433,5400.00,610,-4.20,1
-U-90434,42.75,905,0.08,0
-U-90435,9.99,1240,0.25,0
-U-90436,77.40,1560,-0.11,0
-U-90437,33.10,1880,0.19,0`,
+    label: "Flagged — id/leakage risk",
+    url: "/examples/flagged.csv",
   },
   mixed: {
-    label: "🟡 Mixed — workable, missing time + gaps",
-    csv: `amount,sensor_a,sensor_b,sensor_c,label
-14.20,0.31,,0.10,0
-210.50,-0.44,0.51,0.02,0
-3300.00,-3.10,2.40,,1
-56.75,0.05,,-0.11,0
-9.40,0.22,-0.07,0.31,0
-410.30,-0.62,0.73,-0.40,0
-2890.00,-2.85,,-4.10,1
-61.20,0.10,-0.21,0.17,0
-24.00,0.31,0.09,,0
-133.90,-0.38,0.40,0.05,0
-18.45,0.27,,0.20,0
-2750.00,-3.30,2.55,-5.10,1
-72.60,0.08,0.12,-0.09,0
-99.99,0.02,,-0.07,0
-145.00,-0.51,0.60,-0.22,0
-49.90,0.12,-0.18,0.19,0`,
+    label: "Mixed — workable, missing-value gaps",
+    url: "/examples/mixed.csv",
+  },
+  medium_fraud: {
+    label: "Elevated fraud rate — likely resampled (warning)",
+    url: "/examples/medium_fraud.csv",
+  },
+  high_fraud: {
+    label: "Implausible fraud rate — near-balanced, likely leakage",
+    url: "/examples/high_fraud.csv",
+  },
+  production: {
+    label: "Production-scale — 1,000 rows",
+    url: "/examples/production_scale.csv",
   },
 };
+
+// Severity → all-caps tag for the flag warnings (backend severities: high /
+// medium / info). Border + tag colour are driven by the matching .qflag.<sev> CSS.
+const SEV_TAG = { high: "CRITICAL", medium: "WARNING", info: "ADVISORY" };
+
+// DATA QUALITY (structural verdict) → risk tier pill.
+const TIER = {
+  ready: { label: "TIER 1 — Production Ready", cls: "green" },
+  review: { label: "TIER 2 — Needs Review", cls: "amber" },
+  flagged: { label: "TIER 3 — Flagged", cls: "red" },
+};
+
+const VENDOR = { groq: "Groq", anthropic: "Anthropic", openai: "OpenAI", ollama: "Ollama" };
+
+// Format a raw provider string ("groq:llama-3.1-8b-instant") into a clean
+// "Vendor / Family" engine label without echoing the full model slug.
+function formatEngine(provider, model) {
+  const raw = String(provider || model || "");
+  const [vendorRaw, modelRaw = ""] = raw.split(":");
+  const vendor = VENDOR[vendorRaw?.toLowerCase()] ||
+    (vendorRaw ? vendorRaw.charAt(0).toUpperCase() + vendorRaw.slice(1) : "LLM");
+  let fam = modelRaw;
+  const m = modelRaw.match(/llama[-_]?(\d+(?:\.\d+)?)/i);
+  if (m) fam = `LLaMA ${m[1]}`;
+  else if (modelRaw) fam = modelRaw.split(/[-_]/).slice(0, 2).join(" ");
+  return fam ? `${vendor} / ${fam}` : vendor;
+}
+
+// PRODUCTION READINESS — operational fitness derived from flag severities.
+// Distinct from DATA QUALITY (structural): a clean-but-tiny dataset can be
+// TIER 1 yet still need validation before deploy.
+function productionReadiness(reasons) {
+  const sevs = new Set((reasons || []).map((r) => r.severity));
+  if (sevs.has("high") || sevs.has("medium")) return { label: "Not Production Ready", cls: "red" };
+  if (sevs.has("info")) return { label: "Validate Before Deploy", cls: "amber" };
+  return { label: "Production Ready", cls: "green" };
+}
 
 export default function OnboardPanel({ online }) {
   const [csv, setCsv] = useState("");
@@ -66,17 +75,31 @@ export default function OnboardPanel({ online }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [showReasoning, setShowReasoning] = useState(false);
 
   const run = async (text) => {
-    setBusy(true); setError(null); setResult(null);
+    setBusy(true); setError(null); setResult(null); setShowReasoning(false);
     try {
       setResult(await api.onboardUpload(text));
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
   };
 
-  const loadAndRun = () => {
-    const text = EXAMPLES[example].csv;
+  const loadAndRun = async () => {
+    const ex = EXAMPLES[example];
+    let text = ex.csv;
+    if (!text && ex.url) {
+      // Static example served from /public — fetched on demand (no silent fallback:
+      // a fetch failure surfaces as an explicit error rather than an empty run).
+      try {
+        const resp = await fetch(ex.url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        text = await resp.text();
+      } catch (e) {
+        setError(`Could not load "${ex.label}": ${e.message}`);
+        return;
+      }
+    }
     setCsv(text);
     run(text);
   };
@@ -92,12 +115,8 @@ export default function OnboardPanel({ online }) {
   const cfg = result?.config;
   const facts = result?.dataset_facts;
   const quality = result?.quality;
-  const VERDICT = {
-    ready: { label: "✓ Ready", cls: "green" },
-    review: { label: "⚠ Review", cls: "amber" },
-    flagged: { label: "🚩 Flagged", cls: "red" },
-  };
-  const verdict = quality && (VERDICT[quality.verdict] || { label: quality.verdict, cls: "" });
+  const tier = quality && (TIER[quality.verdict] || { label: quality.verdict, cls: "" });
+  const prod = quality && productionReadiness(quality.reasons);
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <h3>Dataset Onboarding Agent <span className="muted" style={{ fontWeight: 400 }}>· analyze-only</span></h3>
@@ -136,32 +155,47 @@ export default function OnboardPanel({ online }) {
         </label>
       </div>
 
-      {!online && <p className="muted">⚠ Onboarding agent offline (no LLM configured on the server).</p>}
+      {!online && <p className="muted">Onboarding agent offline (no LLM configured on the server).</p>}
       {error && <div className="error">Onboarding error: {error}</div>}
 
       {result && (
         <div className="onboard-result">
           {result.insight && (
             <div className="insight">
-              <div className="k">🧠 Agent insight — what this data is</div>
+              <div className="k">Agent insight — what this data is</div>
               <p>{result.insight}</p>
             </div>
           )}
 
           <div className="grid3" style={{ marginTop: 14 }}>
-            <div className="kpi"><div className="k">Data quality</div>
-              <div className={`v ${verdict?.cls || ""}`} style={{ fontSize: "1.3rem" }}>{verdict?.label || "—"}</div></div>
+            <div className="kpi">
+              <div className="k">Data quality</div>
+              <div className="tier-pill-wrap">
+                <span className={`tier-pill ${tier?.cls || ""}`}>{tier?.label || "—"}</span>
+              </div>
+              <div className="k" style={{ marginTop: 14 }}>Production readiness</div>
+              <div className="tier-pill-wrap">
+                <span className={`tier-pill ${prod?.cls || ""}`}>{prod?.label || "—"}</span>
+              </div>
+            </div>
             <div className="kpi"><div className="k">Fraud rate</div>
               <div className="v" style={{ fontSize: "1.3rem" }}>{facts?.fraud_rate_pct != null ? `${facts.fraud_rate_pct}%` : "—"}</div></div>
-            <div className="kpi"><div className="k">Provider · schema</div>
-              <div className="v" style={{ fontSize: "0.92rem" }}>{result.provider || result.model}
-                <span className={result.validation?.ok ? "green" : "red"}> · {result.validation?.ok ? "mapped ✓" : "failed ✗"}</span></div></div>
+            <div className="kpi">
+              <div className="k">AI Engine —</div>
+              <div className="v engine-name">{formatEngine(result.provider, result.model)}</div>
+              <div className={`engine-sub ${result.validation?.ok ? "ok" : "bad"}`}>
+                {result.validation?.ok ? "Schema inference verified" : "Schema inference failed"}
+              </div>
+            </div>
           </div>
 
           {!!quality?.reasons?.length && (
             <ul className="quality-flags">
               {quality.reasons.map((r, i) => (
-                <li key={i} className={`qflag ${r.severity}`}>{r.text}</li>
+                <li key={i} className={`qflag ${r.severity}`}>
+                  <span className="sev-tag">{SEV_TAG[r.severity] || String(r.severity).toUpperCase()}</span>
+                  <span className="qflag-text">{r.text}</span>
+                </li>
               ))}
             </ul>
           )}
@@ -184,9 +218,19 @@ export default function OnboardPanel({ online }) {
             </table>
           )}
           {result.reasoning && (
-            <div className="reasoning">
-              <div className="k">Schema-mapping rationale</div>
-              <p>{result.reasoning}</p>
+            <div className="reasoning collapsible">
+              <button
+                type="button"
+                className="reasoning-head"
+                aria-expanded={showReasoning}
+                onClick={() => setShowReasoning((v) => !v)}
+              >
+                <span className="k">Schema-mapping rationale</span>
+                <span className={`chev ${showReasoning ? "open" : ""}`} aria-hidden="true">›</span>
+              </button>
+              <div className={`reasoning-body ${showReasoning ? "open" : ""}`}>
+                <p>{result.reasoning}</p>
+              </div>
             </div>
           )}
           {result.notice && <p className="muted">{result.notice}</p>}

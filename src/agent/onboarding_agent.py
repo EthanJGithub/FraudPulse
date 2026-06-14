@@ -66,10 +66,18 @@ _INSIGHT_SYSTEM = (
     "the real data) and the proposed column mapping. Write a concise 3-4 sentence "
     "plain-language insight conveying the TRUTH of this dataset: what it appears to "
     "represent, the fraud prevalence and what that imbalance implies for modelling "
-    "(why PR-AUC matters, why accuracy misleads), notable data-quality signals "
-    "(missingness, suspected id/leakage columns, tiny size), and whether it is "
-    "suitable for training a fraud model. Be candid about weaknesses. Use ONLY the "
-    "numbers in DATASET_FACTS — never invent figures. No markdown, no bullet lists."
+    "(why PR-AUC matters, why accuracy misleads), any notable data-quality signals "
+    "(missingness, suspected id/leakage columns), and whether it is suitable for "
+    "training a fraud model. "
+    "Real fraud is rare (typically under ~2%); if DATASET_FACTS.fraud_rate_pct is "
+    "implausibly high (double digits, or a majority of rows), say so and note it "
+    "points to a resampled/balanced or mislabeled set rather than raw production "
+    "data. "
+    "Characterise dataset size ONLY from the facts: call it small, tiny, or limited "
+    "in size strictly when DATASET_FACTS.tiny_dataset is true; when it is false the "
+    "sample is adequate, so never describe it as small, tiny, or limited. "
+    "Be candid about genuine weaknesses but never invent them. Use ONLY the numbers "
+    "in DATASET_FACTS — never invent figures. No markdown, no bullet lists."
 )
 
 
@@ -122,6 +130,22 @@ def _quality_assessment(facts: Dict[str, Any]) -> Dict[str, Any]:
     if facts.get("tiny_dataset"):
         reasons.append({"severity": "info",
                         "text": f"Small sample ({facts.get('n_rows')} rows) — validate on more data before production"})
+    # Fraud-prevalence plausibility. Real-world fraud is rare (typically <2%); an
+    # implausibly high positive rate signals a resampled/balanced set, a mislabeled
+    # target, or label leakage — not raw production data. The mapping already treats
+    # the *minority* class as fraud (profiler.heuristic_mapping), so this rate is the
+    # most charitable reading; even then a double-digit rate is implausible. Kept
+    # separate from the scoring model: this is a data-quality gate, not a model call.
+    fr = facts.get("fraud_rate_pct")
+    if fr is not None:
+        if fr >= 35:
+            reasons.append({"severity": "high",
+                            "text": f"Implausible fraud prevalence ({fr:.1f}%) — near-balanced classes "
+                                    "indicate a resampled or mislabeled set, not raw data; real fraud is rare"})
+        elif fr >= 15:
+            reasons.append({"severity": "medium",
+                            "text": f"Elevated fraud prevalence ({fr:.1f}%) — appears balanced/resampled, "
+                                    "not raw production data"})
     if any(r["severity"] == "high" for r in reasons):
         verdict = "flagged"
     elif any(r["severity"] == "medium" for r in reasons):
