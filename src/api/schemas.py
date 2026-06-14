@@ -29,6 +29,10 @@ class HealthResponse(BaseModel):
     status: str
     models_loaded: bool
     transactions_scored: int
+    onboarding_agent_online: bool = Field(
+        False, description="True when an LLM backend is configured so the onboarding agent can run"
+    )
+    llm_provider: str = Field("offline", description="Resolved LLM provider:model, or 'offline'")
 
 
 class OnboardRequest(BaseModel):

@@ -151,6 +151,36 @@ A transparent deterministic engine is available only as an explicit opt-in
 (`--allow-heuristic`), and its output is clearly labelled `mode:
 "deterministic-fallback"` — never presented as LLM reasoning.
 
+## Deployment
+
+The repo ships a `Procfile` and `runtime.txt`, so the API deploys to Render or
+Railway as a Python web service.
+
+**API (Render / Railway)**
+- Start command: `uvicorn src.api.main:app --host 0.0.0.0 --port $PORT` (Procfile).
+- Environment variables:
+  - `GROQ_API_KEY` (or `ANTHROPIC_API_KEY`) — **required for the onboarding
+    agent**. Without it the agent returns `503` by design (no silent fallback);
+    scoring and the dashboard still work.
+  - optional: `GROQ_MODEL=llama-3.1-8b-instant`, `FRAUDPULSE_AUTOSEED=1`.
+- The SQLite store is ephemeral on these hosts and reseeds from the committed
+  sample on startup — fine for a demo.
+
+**Dashboard (Vercel)**
+- Build dir `frontend/`, framework Vite.
+- Environment variable: `VITE_API_BASE=https://<your-api-host>/api/v1`.
+
+**Verify everything is online** — one call confirms models *and* the agent:
+
+```bash
+curl https://<your-api-host>/api/v1/health
+# { "status":"ok", "models_loaded":true, "transactions_scored":2000,
+#   "onboarding_agent_online":true, "llm_provider":"groq:llama-3.1-8b-instant" }
+```
+
+`onboarding_agent_online:false` (or `llm_provider:"offline"`) means the LLM key
+isn't set in the host environment.
+
 ## Project Structure
 
 ```

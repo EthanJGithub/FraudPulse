@@ -12,10 +12,15 @@ router = APIRouter(prefix="/api/v1")
 
 @router.get("/health", response_model=HealthResponse)
 async def health():
+    from src.llm import agent_status
+
+    agent = agent_status()
     return HealthResponse(
         status="ok",
         models_loaded=scorer.is_ready(),
         transactions_scored=store.count(),
+        onboarding_agent_online=agent["online"],
+        llm_provider=agent["provider"],
     )
 
 

@@ -160,6 +160,25 @@ def llm_is_live() -> bool:
     return not isinstance(get_llm(), OfflineLLM)
 
 
+def agent_status() -> dict:
+    """Readiness of the onboarding agent's LLM, for health checks.
+
+    ``online`` is True only when a real LLM backend is configured — i.e. the
+    agent can run in its intended (non-fallback) mode. Never raises.
+    """
+    try:
+        llm = get_llm()
+        offline = isinstance(llm, OfflineLLM)
+        provider = getattr(llm, "provider", "offline")
+    except Exception as exc:  # pragma: no cover - defensive
+        return {"online": False, "provider": "unavailable", "model": str(exc)[:80]}
+    return {
+        "online": not offline,
+        "provider": provider,
+        "model": provider.split(":", 1)[1] if ":" in provider else provider,
+    }
+
+
 class LLMUnavailableError(RuntimeError):
     """Raised when the onboarding agent requires an LLM but none is configured.
 
