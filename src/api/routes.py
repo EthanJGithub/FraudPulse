@@ -52,6 +52,16 @@ async def monitoring_alerts(limit: int = 25):
     return {"alerts": store.recent_alerts(limit=limit)}
 
 
+@router.get("/sample")
+async def sample(n: int = 1):
+    """Random REAL transactions (from the committed sample) shaped for /score.
+
+    Drives the dashboard's live stream with varied real amounts and a realistic
+    fraud/legit mix, instead of a few hardcoded vectors."""
+    from src.stream.simulator import sample_payloads
+    return {"transactions": sample_payloads(n)}
+
+
 @router.post("/onboard")
 async def onboard_dataset(req: OnboardRequest):
     """Run the LLM onboarding agent on a transaction CSV.

@@ -15,4 +15,5 @@ export const api = {
   score: (txn) => req("/score", { method: "POST", body: JSON.stringify(txn) }),
   stats: () => req("/monitoring/stats"),
   alerts: (limit = 25) => req(`/monitoring/alerts?limit=${limit}`),
+  sample: (n = 20) => req(`/sample?n=${n}`),
 };

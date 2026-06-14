@@ -61,6 +61,33 @@ def ensure_seeded() -> int:
     return seed()
 
 
+_sample_df = None
+
+
+def sample_payloads(n: int = 1) -> list:
+    """Return ``n`` random REAL transactions from the committed sample, shaped as
+    ``/score`` request payloads. Used by the dashboard's live stream so the feed
+    shows varied real amounts and a realistic fraud/legit mix (no hardcoded
+    vectors). The sample CSV is loaded once and cached."""
+    global _sample_df
+    import os
+    if _sample_df is None:
+        if not os.path.exists(SAMPLE_PATH):
+            return []
+        _sample_df = pd.read_csv(SAMPLE_PATH)
+    n = max(1, min(int(n), 50))
+    rows = _sample_df.sample(min(n, len(_sample_df)))
+    out = []
+    for _, row in rows.iterrows():
+        feats = {v: float(row[v]) for v in V_COLUMNS if v in row and pd.notna(row[v])}
+        out.append({
+            "Amount": float(row.get("Amount", 0) or 0),
+            "Time": float(row.get("Time", 0) or 0),
+            "features": feats,
+        })
+    return out
+
+
 def replay(rate: float, base_url: str) -> None:
     """Post sample transactions to the running API at ``rate`` per second."""
     import requests

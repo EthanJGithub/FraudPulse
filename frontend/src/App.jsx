@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
-import { SAMPLE_TXNS } from "./sampleTxns.js";
 import DecisionPie from "./components/DecisionPie.jsx";
 import ScoreHistogram from "./components/ScoreHistogram.jsx";
 
@@ -16,6 +15,7 @@ export default function App() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
   const streamRef = useRef(null);
+  const bufRef = useRef([]);
 
   const refresh = async () => {
     try {
@@ -32,14 +32,21 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
-  // Live stream: post a real sample transaction every ~1.4s while enabled.
+  // Live stream: replay a random REAL transaction (from the committed sample,
+  // via /sample) every ~1.4s while enabled — varied real amounts and a
+  // realistic fraud/legit mix, no hardcoded vectors. Refills a buffer of 20 to
+  // keep request volume low.
   useEffect(() => {
     if (!streaming) return;
-    let i = 0;
+    bufRef.current = [];
     streamRef.current = setInterval(async () => {
-      const t = SAMPLE_TXNS[i % SAMPLE_TXNS.length];
-      i += 1;
       try {
+        if (bufRef.current.length === 0) {
+          const r = await api.sample(20);
+          bufRef.current = r.transactions || [];
+        }
+        const t = bufRef.current.shift();
+        if (!t) return;
         await api.score({ txn_id: `live-${Date.now()}`, Amount: t.Amount, Time: t.Time, features: t.features });
         refresh();
       } catch (e) { setError(e.message); }
