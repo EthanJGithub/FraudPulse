@@ -83,9 +83,13 @@ export default function App() {
           <p className="sub">Real-time transaction fraud detection · XGBoost + IsolationForest</p>
         </div>
         <div className="status">
-          <div className="live"><span className="dot" /> live</div>
-          <div>{health?.status === "ok" ? "🟢" : "🔴"} API · {health?.models_loaded ? "🟢" : "🔴"} models</div>
-          {meta && <div>PR-AUC {meta.pr_auc} · ROC-AUC {meta.roc_auc}</div>}
+          <div className="srow"><span className="dot" /><span>live</span></div>
+          <div className="srow">
+            <span className={`sdot ${health?.status === "ok" ? "ok" : "bad"}`} /><span>API</span>
+            <span className="sdiv">·</span>
+            <span className={`sdot ${health?.models_loaded ? "ok" : "bad"}`} /><span>models</span>
+          </div>
+          {meta && <div className="srow smetric">PR-AUC {meta.pr_auc} · ROC-AUC {meta.roc_auc}</div>}
         </div>
       </div>
 
