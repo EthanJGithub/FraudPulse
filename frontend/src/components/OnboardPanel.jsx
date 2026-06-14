@@ -91,6 +91,13 @@ export default function OnboardPanel({ online }) {
 
   const cfg = result?.config;
   const facts = result?.dataset_facts;
+  const quality = result?.quality;
+  const VERDICT = {
+    ready: { label: "✓ Ready", cls: "green" },
+    review: { label: "⚠ Review", cls: "amber" },
+    flagged: { label: "🚩 Flagged", cls: "red" },
+  };
+  const verdict = quality && (VERDICT[quality.verdict] || { label: quality.verdict, cls: "" });
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <h3>Dataset Onboarding Agent <span className="muted" style={{ fontWeight: 400 }}>· analyze-only</span></h3>
@@ -142,14 +149,22 @@ export default function OnboardPanel({ online }) {
           )}
 
           <div className="grid3" style={{ marginTop: 14 }}>
-            <div className="kpi"><div className="k">Provider</div><div className="v" style={{ fontSize: "1rem" }}>{result.provider || result.model}</div></div>
+            <div className="kpi"><div className="k">Data quality</div>
+              <div className={`v ${verdict?.cls || ""}`} style={{ fontSize: "1.3rem" }}>{verdict?.label || "—"}</div></div>
             <div className="kpi"><div className="k">Fraud rate</div>
               <div className="v" style={{ fontSize: "1.3rem" }}>{facts?.fraud_rate_pct != null ? `${facts.fraud_rate_pct}%` : "—"}</div></div>
-            <div className="kpi"><div className="k">Validation</div>
-              <div className={`v ${result.validation?.ok ? "green" : "red"}`} style={{ fontSize: "1.3rem" }}>
-                {result.validation?.ok ? "✓ valid" : "✗ failed"}
-              </div></div>
+            <div className="kpi"><div className="k">Provider · schema</div>
+              <div className="v" style={{ fontSize: "0.92rem" }}>{result.provider || result.model}
+                <span className={result.validation?.ok ? "green" : "red"}> · {result.validation?.ok ? "mapped ✓" : "failed ✗"}</span></div></div>
           </div>
+
+          {!!quality?.reasons?.length && (
+            <ul className="quality-flags">
+              {quality.reasons.map((r, i) => (
+                <li key={i} className={`qflag ${r.severity}`}>{r.text}</li>
+              ))}
+            </ul>
+          )}
 
           {cfg && (
             <table className="data" style={{ marginTop: 12 }}>

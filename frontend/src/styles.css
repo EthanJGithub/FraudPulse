@@ -78,6 +78,11 @@ table.data th { color: var(--muted); font-weight: 600; }
 .insight .k { font-size: 0.74rem; color: var(--accent); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 7px; font-weight: 700; }
 .insight p { margin: 0; font-size: 0.95rem; line-height: 1.6; color: var(--text); }
 td.warn { color: var(--amber); }
+.quality-flags { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.qflag { font-size: 0.84rem; padding: 7px 12px; border-radius: 8px; border-left: 3px solid var(--border); background: var(--panel-2); }
+.qflag.high { border-left-color: var(--red); color: #ffd0d5; }
+.qflag.medium { border-left-color: var(--amber); color: #ffe6bd; }
+.qflag.info { border-left-color: var(--muted); color: var(--muted); }
 
 /* System health / observability */
 .hgrid { display: grid; grid-template-columns: repeat(6,1fr); gap: 12px; }
