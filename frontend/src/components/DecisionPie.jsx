@@ -1,9 +1,9 @@
 import { ResponsivePie } from "@nivo/pie";
 
-const COLORS = { ALLOW: "#28a745", REVIEW: "#ffb020", FLAG: "#ff4d5e" };
+const COLORS = { ALLOW: "#789f66", REVIEW: "#d7b66c", FLAG: "#c97b68" };
 const theme = {
-  text: { fill: "#8b98b3" },
-  tooltip: { container: { background: "#1a2335", color: "#e8edf6" } },
+  text: { fill: "#687b6c" },
+  tooltip: { container: { background: "#ffffff", color: "#20382d" } },
 };
 
 export default function DecisionPie({ counts, onSliceClick }) {
@@ -16,11 +16,11 @@ export default function DecisionPie({ counts, onSliceClick }) {
       <ResponsivePie
         data={data}
         margin={{ top: 24, right: 24, bottom: 40, left: 24 }}
-        innerRadius={0.6} padAngle={1.2} cornerRadius={3}
+        innerRadius={0.76} padAngle={1.2} cornerRadius={3}
         colors={(d) => d.data.color}
         borderWidth={1} borderColor={{ from: "color", modifiers: [["darker", 0.5]] }}
         arcLabelsTextColor="#0b0f17"
-        arcLinkLabelsColor={{ from: "color" }} arcLinkLabelsTextColor="#8b98b3"
+        arcLinkLabelsColor={{ from: "color" }} arcLinkLabelsTextColor="#687b6c"
         onClick={onSliceClick ? (d) => onSliceClick(d.id) : undefined}
         theme={theme}
       />

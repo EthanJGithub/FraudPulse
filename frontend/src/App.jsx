@@ -28,12 +28,14 @@ export default function App() {
   const refresh = async () => {
     try {
       const f = filterRef.current;
-      const [s, t, sys] = await Promise.all([
+      const [s, t, sys, serviceHealth] = await Promise.all([
         api.stats(),
         api.transactions(15, f === "ALL" ? undefined : f),
         api.system().catch(() => null),
+        api.health().catch(() => null),
       ]);
       setStats(s); setFeed(t.transactions); if (sys) setSystem(sys); setError(null);
+      if (serviceHealth) setHealth(serviceHealth);
     } catch (e) { setError(e.message); }
   };
 
@@ -80,10 +82,11 @@ export default function App() {
       <div className="header">
         <div>
           <div className="brand">Fraud<span>Pulse</span></div>
-          <p className="sub">Real-time transaction fraud detection · XGBoost + IsolationForest</p>
+          
         </div>
+        <nav className="product-nav" aria-label="Project links"><a href="https://ethanjgithub.github.io/">Portfolio ↗</a><a href="https://github.com/EthanJGithub/FraudPulse" target="_blank" rel="noopener">Source code ↗</a></nav>
         <div className="status">
-          <div className="srow"><span className="dot" /><span>live</span></div>
+          <div className="srow"><span className="dot" /><span>{health?.status === "ok" ? "Service connected" : "Connecting…"}</span></div>
           <div className="srow">
             <span className={`sdot ${health?.status === "ok" ? "ok" : "bad"}`} /><span>API</span>
             <span className="sdiv">·</span>
@@ -93,7 +96,8 @@ export default function App() {
         </div>
       </div>
 
-      {error && <div className="error">API error: {error}. Is the backend running on :8000?</div>}
+      <section className="workspace-intro"><div><span className="eyebrow">Risk operations / overview</span><h1>Every transaction. A clearer signal.</h1><p>Monitor fraud risk, investigate model decisions, and make sense of incoming data.</p></div><span className="workspace-tag">XGBOOST + ISOLATIONFOREST</span></section>
+      {error && <div className="error" role="status">Connecting to the scoring service. Free-tier startup may take a moment. {error}</div>}
 
       <div className="grid4">
         <Kpi k="Transactions Scored" v={(stats?.total ?? 0).toLocaleString()} />
@@ -164,6 +168,7 @@ export default function App() {
       <SystemHealth system={system} />
 
       <OnboardPanel online={health?.onboarding_agent_online} />
+      <footer className="product-foot"><span>FraudPulse · Built by Ethan Jones</span><span>Real transactions. Explainable decisions.</span></footer>
     </div>
   );
 }
