@@ -1,10 +1,10 @@
 import { ResponsiveBar } from "@nivo/bar";
 
 const theme = {
-  text: { fill: "#687b6c", fontSize: 10 },
-  axis: { ticks: { text: { fill: "#687b6c" } }, legend: { text: { fill: "#687b6c" } } },
-  grid: { line: { stroke: "#e3e9dd" } },
-  tooltip: { container: { background: "#ffffff", color: "#20382d" } },
+  text: { fill: "#66647f", fontSize: 10 },
+  axis: { ticks: { text: { fill: "#66647f" } }, legend: { text: { fill: "#66647f" } } },
+  grid: { line: { stroke: "#dedde9" } },
+  tooltip: { container: { background: "#ffffff", color: "#222038" } },
 };
 
 export default function ScoreHistogram({ histogram }) {
@@ -13,7 +13,7 @@ export default function ScoreHistogram({ histogram }) {
   const data = histogram.map((h, i) => ({
     bin: `${i * 5}`,
     count: h.count,
-    color: i >= 18 ? "#c97b68" : i >= 1 ? "#d7b66c" : "#789f66",
+    color: i >= 18 ? "#c97b68" : i >= 1 ? "#d7b66c" : "#6a669f",
   }));
   return (
     <div className="chart">
