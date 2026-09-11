@@ -3,7 +3,7 @@
 The agent must run in three environments without code changes:
 
 1. **Groq** (free, no credit card) — set ``GROQ_API_KEY`` (default model
-   ``llama-3.1-8b-instant``).
+   ``openai/gpt-oss-20b``).
 2. **Anthropic** — set ``ANTHROPIC_API_KEY`` to use Claude instead.
 3. **Offline** — no key set. A deterministic stand-in runs the *same* agent
    loop using heuristics, so dataset onboarding works end-to-end with zero
@@ -136,7 +136,7 @@ def get_llm(temperature: float = 0.0):
         try:
             from langchain_groq import ChatGroq
 
-            model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+            model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
             return LLMClient(ChatGroq(model=model, temperature=temperature), f"groq:{model}")
         except Exception as exc:  # pragma: no cover - depends on env
             logger.warning("Groq init failed (%s); trying next backend.", exc)

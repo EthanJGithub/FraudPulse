@@ -14,7 +14,7 @@ services:
       - key: GROQ_API_KEY        # required for the onboarding agent (no silent fallback)
         sync: false
       - key: GROQ_MODEL
-        value: llama-3.1-8b-instant
+        value: openai/gpt-oss-20b
       - key: FRAUDPULSE_AUTOSEED
         value: "1"
       - key: PYTHON_VERSION
