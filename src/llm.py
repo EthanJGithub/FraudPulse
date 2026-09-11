@@ -137,6 +137,9 @@ def get_llm(temperature: float = 0.0):
             from langchain_groq import ChatGroq
 
             model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+            # Existing hosted environments may still override the retired model.
+            model = {"llama-3.1-8b-instant": "openai/gpt-oss-20b",
+                     "llama-3.3-70b-versatile": "openai/gpt-oss-120b"}.get(model, model)
             return LLMClient(ChatGroq(model=model, temperature=temperature), f"groq:{model}")
         except Exception as exc:  # pragma: no cover - depends on env
             logger.warning("Groq init failed (%s); trying next backend.", exc)
