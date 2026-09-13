@@ -3,6 +3,7 @@ const BASE = import.meta.env.VITE_API_BASE || "/api/v1";
 async function req(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    signal: AbortSignal.timeout(12000),
     ...options,
   });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);

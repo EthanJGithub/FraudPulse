@@ -72,10 +72,11 @@ def train(config: DatasetConfig = None, df: pd.DataFrame = None, model_dir: str 
                 f"{len(df):,}", config.name, 100 * y.mean())
     X = engineer_features(df, config)
 
-    strat = y if y.value_counts().min() >= 2 else None
-    X_tr, X_te, y_tr, y_te = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=strat
-    )
+    if y.value_counts().min() < 10 or y.nunique() != 2:
+        raise ValueError("Training requires both labels and at least 10 examples per label for three-way evaluation")
+    # Stable three-way split: the final test never chooses iterations or thresholds.
+    X_dev, X_te, y_dev, y_te = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_tr, X_val, y_tr, y_val = train_test_split(X_dev, y_dev, test_size=0.25, random_state=43, stratify=y_dev)
     neg, pos = int((y_tr == 0).sum()), int((y_tr == 1).sum())
     spw = neg / max(pos, 1)
     logger.info("Train %s | Test %s | scale_pos_weight=%.1f", f"{len(X_tr):,}", f"{len(X_te):,}", spw)
@@ -86,12 +87,13 @@ def train(config: DatasetConfig = None, df: pd.DataFrame = None, model_dir: str 
         eval_metric="aucpr", early_stopping_rounds=40, random_state=42, n_jobs=-1,
     )
     logger.info("Training XGBoost...")
-    model.fit(X_tr, y_tr, eval_set=[(X_te, y_te)], verbose=False)
+    model.fit(X_tr, y_tr, eval_set=[(X_val, y_val)], verbose=False)
 
+    validation_proba = model.predict_proba(X_val)[:, 1]
+    flag_thr, review_thr = _best_threshold(y_val.values, validation_proba)
     proba = model.predict_proba(X_te)[:, 1]
     pr_auc = average_precision_score(y_te, proba)
     roc_auc = roc_auc_score(y_te, proba)
-    flag_thr, review_thr = _best_threshold(y_te.values, proba)
     preds = (proba >= flag_thr).astype(int)
     tn, fp, fn, tp = confusion_matrix(y_te, preds).ravel()
     logger.info("PR-AUC=%.4f ROC-AUC=%.4f | flag_thr=%.4f", pr_auc, roc_auc, flag_thr)
@@ -114,12 +116,16 @@ def train(config: DatasetConfig = None, df: pd.DataFrame = None, model_dir: str 
     joblib.dump(model, os.path.join(model_dir, "xgb_fraud.pkl"))
     joblib.dump(iso, os.path.join(model_dir, "isolation_forest.pkl"))
     metadata = {
-        "model_version": "fraud-v1.0" if is_default else f"fraud-custom-{config.name}",
+        "model_version": "fraud-v2.0" if is_default else f"fraud-custom-{config.name}",
         "dataset": config.name,
         "schema": config.to_dict(),
         "features": feature_cols,
         "n_features": len(feature_cols),
-        "n_train": int(len(X_tr)), "n_test": int(len(X_te)),
+        "n_train": int(len(X_tr)), "n_validation": int(len(X_val)), "n_test": int(len(X_te)),
+        "evaluation_protocol": "stratified 60/20/20; early stopping and thresholds on validation only; final test untouched during selection",
+        "split_seeds": [42, 43],
+        "validation_pr_auc": float(average_precision_score(y_val, validation_proba)),
+        "test_review_rate": float(np.mean(proba >= review_thr)),
         "fraud_rate": float(y.mean()),
         "scale_pos_weight": round(spw, 2),
         "pr_auc": round(float(pr_auc), 4),
@@ -141,9 +147,9 @@ def train(config: DatasetConfig = None, df: pd.DataFrame = None, model_dir: str 
     # held-out test population) so PSI monitoring has a training-time baseline.
     try:
         from src import drift as _drift
-        ref_vals = {"fraud_probability": [float(p) for p in proba]}
+        ref_vals = {"fraud_probability": [float(p) for p in validation_proba]}
         if config.amount_col and config.amount_col in df.columns:
-            ref_vals["amount"] = df.loc[X_te.index, config.amount_col].tolist()
+            ref_vals["amount"] = df.loc[X_val.index, config.amount_col].tolist()
         _drift.REFERENCE_PATH = os.path.join(model_dir, "drift_reference.json")
         _drift.build_reference(ref_vals)
         logger.info("Saved drift reference (%s).", ", ".join(ref_vals))

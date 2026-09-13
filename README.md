@@ -45,16 +45,18 @@ class imbalance.
 
 ---
 
-## Model Performance (held-out test set)
+## Model Performance (final test after validation-only selection)
+
+The 60/20/20 stratified split uses validation for early stopping and threshold selection. The final test is excluded from those decisions. See [EVALUATION.md](EVALUATION.md).
 
 | Metric | Value |
 |---|---|
-| Algorithm | XGBoost + IsolationForest on 22 features (V1–V28 PCA + Amount + derived) |
-| **PR-AUC (average precision)** | **0.880** |
-| ROC-AUC | 0.978 |
-| Precision @ flag threshold | **0.94** |
-| Recall @ flag threshold | **0.83** |
-| Confusion @ flag | TP 81 · FP 5 · FN 17 · TN 56,859 |
+| Algorithm | XGBoost + IsolationForest on 31 features (V1–V28 PCA + Amount + derived) |
+| **PR-AUC (average precision)** | **0.8755** |
+| ROC-AUC | 0.9829 |
+| Precision @ flag threshold | **0.8235** |
+| Recall @ flag threshold | **0.8571** |
+| Confusion @ flag | TP 84 · FP 18 · FN 14 · TN 56,846 |
 | Fraud base rate | 0.172% |
 
 Full model card: [`models/metadata.json`](models/metadata.json).

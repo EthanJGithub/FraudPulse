@@ -1,77 +1,13 @@
+**Evaluation protocol — September 2026**
+
+Training/validation/final-test are stratified 60/20/20 splits (seeds 42, 43). Only validation selects early stopping and thresholds. This is a within-dataset estimate, not prospective customer validation; the underlying public dataset has been explored previously. No claim of a never-before-seen benchmark dataset is made.
+
+Uncalibrated class-weighted model scores must not be interpreted as validated real-world probabilities. Temporal/customer-disjoint evaluation and independent deployment validation remain future work.
+
+```json
 {
   "model_version": "fraud-v2.0",
   "dataset": "ULB Credit-Card Fraud",
-  "schema": {
-    "target_col": "Class",
-    "feature_cols": [
-      "V1",
-      "V2",
-      "V3",
-      "V4",
-      "V5",
-      "V6",
-      "V7",
-      "V8",
-      "V9",
-      "V10",
-      "V11",
-      "V12",
-      "V13",
-      "V14",
-      "V15",
-      "V16",
-      "V17",
-      "V18",
-      "V19",
-      "V20",
-      "V21",
-      "V22",
-      "V23",
-      "V24",
-      "V25",
-      "V26",
-      "V27",
-      "V28",
-      "Amount"
-    ],
-    "amount_col": "Amount",
-    "time_col": "Time",
-    "positive_label": 1,
-    "name": "ULB Credit-Card Fraud"
-  },
-  "features": [
-    "V1",
-    "V2",
-    "V3",
-    "V4",
-    "V5",
-    "V6",
-    "V7",
-    "V8",
-    "V9",
-    "V10",
-    "V11",
-    "V12",
-    "V13",
-    "V14",
-    "V15",
-    "V16",
-    "V17",
-    "V18",
-    "V19",
-    "V20",
-    "V21",
-    "V22",
-    "V23",
-    "V24",
-    "V25",
-    "V26",
-    "V27",
-    "V28",
-    "Amount",
-    "log_amount",
-    "hour"
-  ],
   "n_features": 31,
   "n_train": 170883,
   "n_validation": 56962,
@@ -107,3 +43,4 @@
   "data_source": "huggingface:David-Egea/Creditcard-fraud-detection",
   "trained_on_real_data": true
 }
+```

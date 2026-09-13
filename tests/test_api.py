@@ -7,7 +7,7 @@ def test_health(client):
 
 def test_model_info(client):
     m = client.get("/api/v1/model/info").json()
-    assert m["model_version"] == "fraud-v1.0"
+    assert m["model_version"] == "fraud-v2.0"
     assert m["pr_auc"] >= 0.7
     assert 0 < m["flag_threshold"] <= 1
 

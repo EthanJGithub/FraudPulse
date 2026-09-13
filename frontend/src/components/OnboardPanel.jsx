@@ -155,7 +155,8 @@ export default function OnboardPanel({ online }) {
         </label>
       </div>
 
-      {!online && <p className="muted">Onboarding agent offline (no LLM configured on the server).</p>}
+      {online == null && <p className="muted" role="status">Checking the onboarding service… You can prepare a CSV while it connects.</p>}
+      {online === false && <p className="muted">The server reports that its onboarding model is unavailable. Try again later.</p>}
       {error && <div className="error">Onboarding error: {error}</div>}
 
       {result && (

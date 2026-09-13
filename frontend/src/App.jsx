@@ -21,11 +21,14 @@ export default function App() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState(null);
   const streamRef = useRef(null);
+  const refreshing = useRef(false);
   const bufRef = useRef([]);
   const filterRef = useRef(filter);
   filterRef.current = filter;
 
   const refresh = async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
     try {
       const f = filterRef.current;
       const [s, t, sys, serviceHealth] = await Promise.all([
@@ -35,8 +38,9 @@ export default function App() {
         api.health().catch(() => null),
       ]);
       setStats(s); setFeed(t.transactions); if (sys) setSystem(sys); setError(null);
-      if (serviceHealth) setHealth(serviceHealth);
-    } catch (e) { setError(e.message); }
+      if (serviceHealth) { setHealth(serviceHealth); api.modelInfo().then(setMeta).catch(() => {}); }
+    } catch (e) { setError(e.message); setHealth(null); }
+    finally { refreshing.current = false; }
   };
 
   useEffect(() => {
@@ -97,6 +101,8 @@ export default function App() {
       </div>
 
       <section className="workspace-intro"><div><span className="eyebrow">Risk operations / overview</span><h1>Every transaction. A clearer signal.</h1><p>Monitor fraud risk, investigate model decisions, and make sense of incoming data.</p></div><span className="workspace-tag">XGBOOST + ISOLATIONFOREST</span></section>
+      {health?.status !== "ok" && <div className="card" role="status"><h3>Your example is ready</h3><p>The live scoring service is starting. Explore a recorded model run immediately, or wait for the live controls.</p><a className="btn" href="https://ethanjgithub.github.io/demos/fraudpulse.html">Explore recorded results ↗</a></div>}
+      <p className="muted">Dashboard metrics describe the replay stream, which contains an enriched selection of fraud cases. They are separate from final-test model metrics.</p>
       {error && <div className="error" role="status">Connecting to the scoring service. Free-tier startup may take a moment. {error}</div>}
 
       <div className="grid4">
@@ -107,7 +113,7 @@ export default function App() {
       </div>
 
       <div className="btnrow">
-        <button className={`btn ${streaming ? "btn2" : ""}`} onClick={() => setStreaming((s) => !s)}>
+        <button className={`btn ${streaming ? "btn2" : ""}`} disabled={health?.status !== "ok"} onClick={() => setStreaming((s) => !s)}>
           {streaming ? "⏸ Stop live stream" : "▶ Start live transaction stream"}
         </button>
         <span className="muted" style={{ alignSelf: "center" }}>
@@ -128,8 +134,8 @@ export default function App() {
 
       {conf && (
         <div className="grid3" style={{ marginTop: 16 }}>
-          <Kpi k="Detection Precision" v={`${(precision * 100).toFixed(1)}%`} cls="green" />
-          <Kpi k="Detection Recall" v={`${(recall * 100).toFixed(1)}%`} cls="green" />
+          <Kpi k="Replay Precision" v={`${(precision * 100).toFixed(1)}%`} cls="green" />
+          <Kpi k="Replay Recall" v={`${(recall * 100).toFixed(1)}%`} cls="green" />
           <Kpi k="Confusion (TP·FP·FN·TN)" v={`${conf.tp}·${conf.fp}·${conf.fn}·${conf.tn}`} />
         </div>
       )}
